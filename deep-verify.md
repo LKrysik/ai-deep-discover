@@ -1,853 +1,931 @@
-# Deep Verify V6.3
+# Deep Verify V7.0 - Adaptive Verification System (AVS)
 
-## Variant Information
-```
-Parent: v6.2
-Experiment basis: EXP-2026-01-11-V62-T11 (T11 test results)
-Operators applied:
-- INHERIT: All v6.2 features (Bayesian stopping, Layer D)
-- ADD_METHOD: #151 Semantic Entropy Validation (confabulation detection)
-- ADD_METHOD: #152 Socratic Decomposition Pre-Analysis (targeted 5 Whys)
-- ADD_METHOD: #127 Bootstrap Paradox (circular dependency detection)
-- ADD_METHOD: #128 Theseus Paradox (core problem alignment)
-- ADD_METHOD: #116 Strange Loop Detection (reasoning cycle detection)
-- ADD_METHOD: #119 Ground Truth Demand (claim verification)
-- ADD_METHOD: #136 Kernel Paradox (self-evaluation limits)
-- ADD_METHOD: #132 Goodhart's Law Check (metric vs goal)
-- ADD_PHASE: Phase 1.5 Integration Check (mandatory code reading)
+## What is this?
 
-Hypotheses:
-- H1: Bootstrap Paradox will catch INTEGRATE errors (T11-E1 type)
-- H2: Semantic Entropy will reduce false positives by detecting confabulation
-- H3: Kernel Paradox will provide clearer user verification requirements
-```
+**Deep Verify V7** is a fundamentally redesigned verification workflow based on the **Adaptive Verification System (AVS)** architecture. Unlike previous versions that used fixed method lists, V7 adapts its detection strategy to each artifact.
 
-## Core Principle
+**V7.0 Architecture Change from V6.x:**
+- **PARADIGM SHIFT**: From pattern-based detection → adaptive layered detection
+- **Biological Metaphor**: Modeled on immune system (innate + adaptive responses)
+- **4-Layer Architecture**: Innate → Adaptive → Memory → Escalation
+- **Dynamic Method Selection**: Per-artifact, not predefined
+- **Anomaly Detection**: Flags unknown patterns instead of missing them
+- **Learning Loop**: Improves with each verification run
+- **Tiered Execution**: Cost proportional to artifact criticality
+- **Explicit Uncertainty**: Reports confidence levels, not just findings
 
-```
-HONESTY → INTEGRATION → DEPTH → CHALLENGE → ROOT CAUSE → FIX
-```
-
-**What changed from v6.2:**
-- Added Phase 1.5: Integration Check (mandatory reading of existing code)
-- Added 8 new methods for deeper analysis
-- Strengthened Phase 0 with #132 Goodhart's Law Check
-- Enhanced Phase 4 with #151, #152 for better root cause analysis
-- Enhanced Phase 5 with #127, #128, #116, #119 for stronger challenges
-- Added Phase 6.5: Kernel Paradox handoff
-
-**Inherited from v6.2:**
-- Phase 4.5 Bayesian Stop Check
-- Layer D (Security/Operational) in Phase 2
-- #115 Negative Space Cartography, #39 Security Audit Personas
-- #61 Pre-mortem Analysis, #67 Stability Basin Analysis
-
-**Limitation:** Agent verifies agent work. This reduces but cannot eliminate self-verification bias. Phase 6.5 explicitly identifies what USER must independently verify.
+**Why this change?**
+Experimental evidence from EXP-2026-01-13-001:
+- V6.6 added methods vs V6.5 → costs increased 18%, detection unchanged
+- Pattern matching fundamentally cannot detect unknown patterns
+- Adding specific fixes is whack-a-mole, not solution
+- 300+ method analysis across 18 categories converged on adaptive approach
 
 ---
 
-## Definitions (Single Source)
+## Key Concepts
 
 | Term | Definition |
 |------|------------|
-| TASK | Original user request (spec, message, ticket) |
-| CONTENT | Artifact to verify (code, document, plan) |
-| CONCERN | Area needing verification at specific LAYER |
-| LAYER | Level of analysis: Content / Structure / Assumptions / **Security/Operational** |
-| METHOD | Thinking pattern from methods.csv |
-| FINDING | Discovered issue with DEPTH LEVEL |
-| DEPTH | Symptom → Cause → Structure → Assumption → Root Cause |
-| INTEGRATION | Verification that existing codebase was examined |
+| LAYER | Detection tier: INNATE (fast, pattern) / ADAPTIVE (deep, learning) / MEMORY / ESCALATION |
+| PROFILE | Artifact characteristics: domains, structure, complexity, criticality |
+| TRIAGE | Severity classification determining execution tier |
+| BUDGET | Token allocation based on triage tier |
+| RELEVANCE | Method score for THIS artifact (not global) |
+| ANOMALY | Pattern that doesn't match known categories → flagged for investigation |
+| CONFIDENCE | Certainty level (0-100%) for each finding |
+| LEARNING | Weight updates based on detection results |
 
 **Methods source:** `src/core/methods/methods.csv`
+**Domain knowledge:** `src/core/knowledge/domain-knowledge-base.md`
 
 ---
 
-## Flow Overview
+## Architecture Overview
 
 ```
-Phase 0: Self-Check ──→ Phase 1: Inputs ──→ Phase 1.5: Integration Check (NEW)
-                                                        ↓
-                                          Phase 2: Multi-Layer Concerns (A/B/C/D)
-                                                        ↓
-                                                   Phase 3: Methods
-                                                        ↓
-                                                   Phase 4: Verify
-                                                        ↓
-                                             Phase 4.5: Bayesian Stop Check
-                                                   ↓           ↓
-                                            [CONTINUE]    [STOP EARLY]
-                                                   ↓           ↓
-                                            Phase 5: Challenge  │
-                                                   ↓           │
-                                             Phase 6: Results ←─┘
-                                                   ↓
-                                        Phase 6.5: Kernel Handoff (NEW)
-                                                   ↓
-                                            Phase 7: Fix Root Cause
-                                                   ↓
-                                             [Loop or Done]
+┌─────────────────────────────────────────────────────────────────┐
+│                 ADAPTIVE VERIFICATION SYSTEM V7                  │
+└─────────────────────────────────────────────────────────────────┘
+
+     ┌──────────────────────────────────────────────────────┐
+     │                  ARTIFACT INTAKE                      │
+     │  Phase 0: Profile → Triage → Budget Allocation        │
+     └────────────────────────┬─────────────────────────────┘
+                              │
+     ┌────────────────────────▼─────────────────────────────┐
+     │           LAYER 1: INNATE DETECTION                   │
+     │  Phase 1-2: Fast pattern matching (~5-10K tokens)     │
+     │  • Consistency checks                                 │
+     │  • Completeness checks                                │
+     │  • Known pattern detection                            │
+     │                                                       │
+     │  FAST PATH: Critical finding → Layer 4 (escalate)     │
+     │  FAST PATH: Simple + no findings → DONE               │
+     └────────────────────────┬─────────────────────────────┘
+                              │
+     ┌────────────────────────▼─────────────────────────────┐
+     │          LAYER 2: ADAPTIVE DETECTION                  │
+     │  Phase 3-5: Deep analysis (~15-30K tokens)            │
+     │  • Artifact-specific method selection                 │
+     │  • Anomaly detection for unknown patterns             │
+     │  • Hypothesis generation from first principles        │
+     │  • Multi-domain interaction analysis                  │
+     │  • Explicit uncertainty quantification                │
+     └────────────────────────┬─────────────────────────────┘
+                              │
+     ┌────────────────────────▼─────────────────────────────┐
+     │           LAYER 3: IMMUNE MEMORY                      │
+     │  Phase 6: Learning and weight updates                 │
+     │  • Record what found, what missed                     │
+     │  • Update method relevance weights                    │
+     │  • Add new patterns from findings                     │
+     │  • Retire low-ROI methods                            │
+     └────────────────────────┬─────────────────────────────┘
+                              │
+     ┌────────────────────────▼─────────────────────────────┐
+     │           LAYER 4: ESCALATION                         │
+     │  Phase 7: Human review (triggered, not default)       │
+     │  • Critical finding escalation                        │
+     │  • Low confidence escalation                          │
+     │  • Anomaly investigation                              │
+     │  • Human-in-loop decision                             │
+     └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 0: Self-Check (MANDATORY)
+## Phase 0: Artifact Intake & Triage (MANDATORY)
 
-**Purpose:** Establish honesty BEFORE analysis begins.
+**Purpose:** Profile artifact and allocate resources proportionally.
 
-**Execute these methods:**
+### Step 0.1: Self-Check (Unchanged from V6)
 
-### #113 Counterfactual Self-Incrimination
-List 5 specific ways you could hide self-deception in THIS verification:
-1. [way 1]
-2. [way 2]
-3. [way 3]
-4. [way 4]
-5. [way 5]
-
-For each: provide CONCRETE EVIDENCE it is NOT being used. Weak/absent evidence = FLAG.
-
-### #131 Observer Paradox
-"Is this analysis GENUINE or PERFORMANCE?"
-
-- Signs of performance: too smooth, too complete, too confident
-- Signs of genuine: admitted uncertainty, visible struggle, revision marks
-- If performance → redo with honesty
-
-### #112 Entropy Leak Detection (CUI BONO)
-For decisions I'll make: Who benefits?
-- List ALL elements in input task vs output
-- For silent omissions: CUI BONO - benefits AGENT or OUTCOME?
-- If AGENT benefits (easier work, faster completion) → RED FLAG
-- If OUTCOME benefits (better verification) → acceptable
-
-### #132 Goodhart's Law Check (NEW in v6.3)
-"Am I optimizing METRIC or actual GOAL?"
-
-- Metric being optimized: [what]
-- Actual goal: [what]
-- Divergence check: Could I score well on metric while failing goal?
-- If YES → refocus on actual goal
+Execute #113 Counterfactual Self-Incrimination, #131 Observer Paradox, #112 Entropy Leak Detection.
 
 ```
-## Phase 0: Self-Check
-
-Self-deception methods (#113):
-1. [specific to this verification]
-2. [specific to this verification]
-3. [specific to this verification]
-4. [specific to this verification]
-5. [specific to this verification]
-Evidence check: [concrete evidence for each]
-
-Genuine vs Performance (#131): [which signs present]
-
-CUI BONO (#112): [what I'll watch for]
-
-Goodhart Check (#132):
-- Metric: [what I might optimize]
-- Goal: [actual objective]
-- Divergence: [YES/NO - how]
+## Phase 0.1: Self-Check
+Self-deception methods: [5 specific methods and evidence against each]
+Genuine vs Performance: [assessment]
+CUI BONO: [what to watch for]
 ```
 
-→ Auto proceed to Phase 1
+### Step 0.2: Artifact Profiling
 
----
-
-## Phase 1: Inputs & Mode
-
-**Purpose:** Confirm what we're verifying and how.
+Extract artifact characteristics for triage and method selection.
 
 ```
-## Deep Verify V6.3
+## Phase 0.2: Artifact Profile
 
-TASK: [original request - quote verbatim if possible]
-CONTENT: [what was produced]
-TYPE: [Code / Document / Plan / Other]
-ENVIRONMENT: [context, related files]
+### Basic Properties
+| Property | Value | Source |
+|----------|-------|--------|
+| Type | [code/document/plan/protocol/specification] | Content structure |
+| Size | [N] tokens | Token count |
+| Sections | [N] distinct sections | Heading count |
+| Requirements | [N] explicit requirements | "must", "shall", "requires" |
 
-[C] Correct - proceed
-[E] Edit - describe correction needed
-[X] Exit - cancel
+### Domain Detection
+Scan for domain markers. Check ALL that apply:
+
+| Domain | Markers Present | Confidence |
+|--------|-----------------|------------|
+| Security/Crypto | [auth, encrypt, key, signature, hash, PFS, ZK] | [0-100%] |
+| Distributed Systems | [consensus, partition, availability, replication, CAP, FLP] | [0-100%] |
+| Formal Methods | [proof, theorem, invariant, specification, verification] | [0-100%] |
+| Mechanism Design | [incentive, game theory, VCG, auction, voting] | [0-100%] |
+| Quantum Computing | [qubit, superposition, entanglement, quantum advantage] | [0-100%] |
+| PL Theory | [type system, inference, soundness, termination] | [0-100%] |
+| General Software | [default - no specialized domain detected] | [100 - max(others)] |
+
+Primary domain(s): [highest confidence domains]
+
+### Complexity Assessment
+| Factor | Score (1-5) | Evidence |
+|--------|-------------|----------|
+| Conceptual density | [N] | Concepts per 100 tokens |
+| Cross-references | [N] | Internal reference count |
+| External dependencies | [N] | External reference count |
+| Nested structure | [N] | Max nesting depth |
+| Ambiguity | [N] | Vague terms count |
+
+Complexity score: [SUM / 25 → LOW (<0.4) / MEDIUM (0.4-0.7) / HIGH (>0.7)]
+
+### Criticality Assessment
+| Factor | Score (1-5) | Evidence |
+|--------|-------------|----------|
+| Security implications | [N] | Security-related content |
+| Data handling | [N] | Data operations mentioned |
+| User impact | [N] | User-facing functionality |
+| Integration scope | [N] | System integration breadth |
+| Stated importance | [N] | Explicit priority markers |
+
+Criticality score: [SUM / 25 → LOW (<0.4) / MEDIUM (0.4-0.7) / HIGH (>0.7) / CRITICAL (>0.9)]
 ```
 
-**If [E]:** Describe what's wrong. Agent corrects and re-displays. Maximum 3 edit cycles before requiring [X] Exit.
+### Step 0.3: Triage Decision
 
-**Content Validity Check:**
-- If CONTENT is empty or trivial (< 10 lines/tokens) → warn user: "Content too minimal for deep verification. Proceed anyway? [Y/N]"
-- If CONTENT cannot be parsed (corrupt file, encoding error) → [X] Exit with error
-
-**HALT** - waiting for choice
-
----
-
-### Mode Selection
+Based on profile, determine execution tier.
 
 ```
-[A] Auto - run all phases, show results at end
-[G] Guided - pause at each phase for approval
+## Phase 0.3: Triage Decision
+
+### Triage Matrix
+| Complexity | Criticality | Tier | Budget | Layers |
+|------------|-------------|------|--------|--------|
+| LOW | LOW | 1 | 10K max | 1 only |
+| LOW | MEDIUM | 2 | 20K max | 1 + partial 2 |
+| MEDIUM | LOW | 2 | 20K max | 1 + partial 2 |
+| MEDIUM | MEDIUM | 3 | 40K max | 1 + 2 |
+| HIGH | MEDIUM | 3 | 40K max | 1 + 2 |
+| MEDIUM | HIGH | 4 | 60K max | 1 + 2 + 4 if needed |
+| HIGH | HIGH | 4 | 60K max | 1 + 2 + 4 if needed |
+| ANY | CRITICAL | 5 | 100K+ | All layers |
+
+### Selected Tier
+Complexity: [value]
+Criticality: [value]
+**TIER: [1-5]**
+**BUDGET: [N]K tokens**
+**LAYERS: [list]**
+
+### Budget Allocation
+| Layer | Allocation | Purpose |
+|-------|------------|---------|
+| Layer 1 (Innate) | [N]K | Fast pattern detection |
+| Layer 2 (Adaptive) | [N]K | Deep analysis |
+| Layer 3 (Memory) | ~1K | Learning overhead |
+| Layer 4 (Escalation) | [N]K if triggered | Human review |
+| Reserve | [N]K | Contingency |
 ```
 
-**Recommendation:** Use Guided [G] for first time or high-stakes content.
-
-**HALT** - waiting for choice
-
----
-
-## Phase 1.5: Integration Check (NEW in v6.3)
-
-**Purpose:** MANDATORY verification that existing codebase was examined before verification begins.
-
-**Rationale:** Testing showed INTEGRATE errors (T11-E1 type) are consistently missed because agents don't read existing code. This phase forces integration verification.
-
-### #127 Bootstrap Paradox
-"Does A require B require C require A?"
-
-For the CONTENT being verified:
-1. **List all external references** - files, modules, interfaces mentioned
-2. **For each reference, verify:**
-   - Was the referenced file/module actually READ?
-   - Was its structure/interface understood?
-   - Are there circular dependencies?
+### Step 0.4: Confirmation Gate
 
 ```
-## Integration Check
+## Phase 0.4: Intake Confirmation
 
-### External References in CONTENT
-| Reference | Type | Actually Read? | Evidence |
-|-----------|------|----------------|----------|
-| [file/module] | [import/reference/extends] | [YES/NO] | [quote or "NOT READ"] |
+**ARTIFACT SUMMARY**
+Type: [type]
+Size: [N] tokens
+Domains: [primary domains]
+Complexity: [LOW/MEDIUM/HIGH]
+Criticality: [LOW/MEDIUM/HIGH/CRITICAL]
 
-### Circular Dependency Check (#127)
-Dependencies traced:
-- A depends on → B
-- B depends on → C
-- C depends on → [?]
+**EXECUTION PLAN**
+Tier: [1-5]
+Budget: [N]K tokens
+Layers: [1 / 1+2 / 1+2+4 / all]
+Method selection: [STATIC for Tier 1 / DYNAMIC for Tier 2+]
 
-Cycles detected: [YES/NO - describe if yes]
-
-### Integration Verdict
-- [ ] All external references were read
-- [ ] No unread dependencies
-- [ ] No circular dependencies blocking analysis
-- [ ] CONTENT integrates with existing codebase
-
-**If ANY checkbox is unchecked:**
-→ HALT - Must read missing files before proceeding
-→ List files to read: [files]
-```
-
-**HALT** - if integration incomplete, must read files first
-
-### Integration Failure Recovery
-
-If integration check fails:
-1. **List unread files** that must be examined
-2. **Read each file** and document key interfaces/structures
-3. **Re-verify** integration check
-4. **Only proceed** when all checkboxes pass
-
-**Maximum attempts:** 3. If still failing after 3 attempts → escalate to user.
-
----
-
-## Phase 2: Multi-Layer Concerns
-
-**Purpose:** Identify concerns at FOUR layers (A/B/C/D), not just content.
-
-**Why four layers:** Problems hide at different depths:
-- Layer A (Content): Visible issues in the text/code
-- Layer B (Structure): Hidden issues in organization
-- Layer C (Assumptions): Invisible beliefs and constraints
-- Layer D (Security/Operational): Implicit requirements often missed
-
-### Layer A: Content Concerns
-What problems might exist IN the content?
-- Errors, gaps, inconsistencies in the actual text/code
-- Missing elements, wrong information
-
-### Layer B: Structure Concerns
-What problems might exist in HOW it's organized?
-- Wrong structure for document type
-- Redundancy caused by structure
-- Missing sections, illogical flow
-
-### Layer C: Assumption Concerns
-What problems might exist in what's ASSUMED?
-- Hidden assumptions that could be wrong
-- Inherited patterns applied without questioning
-- Invisible constraints taken as given
-
-### Layer D: Security/Operational Concerns
-What problems might exist in IMPLICIT REQUIREMENTS?
-- Security: audit trails, access control, data sensitivity
-- Operational: error recovery, logging, monitoring
-- Compliance: regulatory requirements, standards adherence
-- Completeness: what SHOULD exist but doesn't?
-
-**Cross-Layer Root Cause Note:** Security issues discovered in Layer D often have their ROOT CAUSE in Layer C (Assumptions). When tracing 5 Whys for Layer D findings, explicitly check if an unquestioned assumption in Layer C enables the security gap.
-
----
-
-### Concern Generation
-
-**[MAB: Generate concerns that will find problems, not confirm success]**
-
-**Option [M] Manual:** Describe your concerns. Agent structures them into layers.
-
-**Option [D] Discovery:** Agent uses methods to discover concerns per layer.
-
-```
-[M] Manual - I'll describe what to verify
-[D] Discovery - Agent finds concerns using methods
+[C] Correct - proceed with this plan
+[E] Edit - change tier/budget
+[X] Exit - cancel verification
 ```
 
 **HALT** - waiting for choice
 
 ---
 
-### Discovery Methods per Layer
+## LAYER 1: INNATE DETECTION (Phase 1-2)
 
-| Layer | Mandatory Methods | Purpose |
-|-------|-------------------|---------|
-| A: Content | #70, #71, #72, #73, #75, #150, **#152** | Sanity checks + Socratic decomposition |
-| B: Structure | #79, #81, #107, #117, **#116** | Structure analysis + loop detection |
-| C: Assumptions | #74, #146, #84, **#119** | Assumption excavation + ground truth |
-| **D: Security** | **#39, #61, #67, #115, #127** | **Security + bootstrap paradox** |
+**Purpose:** Fast, pattern-based detection using core methods.
+**Budget:** ~5-10K tokens
+**Always executes:** YES (every artifact)
 
-**NEW Methods in v6.3:**
-- **#152 Socratic Decomposition Pre-Analysis** - Decompose into atomic sub-questions, apply 5 Whys only to contradictions
-- **#116 Strange Loop Detection** - Build justification graph, detect cycles
-- **#119 Ground Truth Demand** - Classify claims as verifiable/unverifiable
-- **#127 Bootstrap Paradox** - Detect circular dependencies (A→B→C→A)
+### Phase 1: Core Pattern Checks
 
-**Additional:** Select 3-6 more methods based on TYPE and CONTENT specifics.
+These checks ALWAYS run regardless of tier. They are the "innate immunity" - pre-programmed, fast, broad.
+
+#### 1.1 Consistency Check (#84)
 
 ```
-## Concerns by Layer
+## 1.1 Consistency Check
 
-### Layer A: Content
-| ID | Concern | Source | Description |
-|----|---------|--------|-------------|
-| A1 | [name] | [method/#] | [what to verify] |
+### Definition Stability
+| Term | First Definition | Later Usage | Consistent? |
+|------|------------------|-------------|-------------|
+| [term] | "[definition]" at [location] | "[usage]" at [location] | YES/NO |
 
-### Layer B: Structure
-| ID | Concern | Source | Description |
-|----|---------|--------|-------------|
-| B1 | [name] | [method/#] | [what to verify] |
+### Contradiction Scan
+| Statement A | Statement B | Contradiction? |
+|-------------|-------------|----------------|
+| "[claim 1]" | "[claim 2]" | YES/NO/POSSIBLE |
 
-### Layer C: Assumptions
-| ID | Concern | Source | Description |
-|----|---------|--------|-------------|
-| C1 | [name] | [method/#] | [what to verify] |
-
-### Layer D: Security/Operational
-| ID | Concern | Source | Description |
-|----|---------|--------|-------------|
-| D1 | [name] | [method/#] | [what to verify] |
-
-[P] Proceed
-[A] Add concern
-[R] Remove concern (e.g., R A2)
+Consistency verdict: [PASS / FAIL with details]
 ```
 
-**HALT** (G only) - waiting for choice
-
----
-
-## Phase 3: Method Selection
-
-**Purpose:** Select methods that will find problems, with diversity requirement.
-
-**[MAB: Select methods from DIFFERENT categories to get multiple perspectives]**
-
-### Requirements:
-1. **Minimum 5 methods per concern**
-2. **Category diversity:** Each concern must have methods from at least 3 different categories
-3. **Attack method:** Each concern must have at least 2 methods that ATTACK (challenge, risk, anti-bias, meta-check)
+#### 1.2 Completeness Check (#83)
 
 ```
-## Methods per Concern
+## 1.2 Completeness Check
 
-| Concern | Methods | Categories | Attack Methods |
-|---------|---------|------------|----------------|
-| A1 | #73, #56, #63, #84, #109 | sanity, challenge, risk, coherence, exploration | #63, #109 |
-| B1 | #79, #107, #133, #81, #116 | coherence, exploration, meta, sanity, epistemology | #133, #116 |
-| C1 | #74, #146, #113, #109, #119 | sanity, exploration, epistemology, exploration | #113, #109, #119 |
-| D1 | #39, #61, #115, #67, #127 | technical, risk, exploration, epistemology, challenge | #67, #127 |
+### Required Elements
+For artifact type [TYPE], check required elements:
 
-[P] Proceed to verification
-[A] Add method (by ID or description)
-[R] Remove method
-[S] Show method categories
-[C] Back to Concerns
+| Element | Present? | Location | Quality |
+|---------|----------|----------|---------|
+| [element 1] | YES/NO | [where] | COMPLETE/PARTIAL/MISSING |
+| [element 2] | YES/NO | [where] | COMPLETE/PARTIAL/MISSING |
+
+### TODO/Placeholder Scan
+| Marker | Location | Impact |
+|--------|----------|--------|
+| [TODO] | [line] | [blocker/minor] |
+| [TBD] | [line] | [blocker/minor] |
+| [PLACEHOLDER] | [line] | [blocker/minor] |
+
+Completeness verdict: [PASS / FAIL with details]
 ```
 
-**HALT** (G only) - waiting for choice
-
----
-
-## Phase 4: Verify with Depth
-
-**Purpose:** Find problems AND trace them to root cause.
-
-**[MAB: Find root causes, not just symptoms. Don't stop at first problem found.]**
-
-### #152 Socratic Decomposition Pre-Analysis (NEW in v6.3)
-
-**Before applying methods to each concern:**
-
-1. **Decompose** the concern into atomic sub-questions
-2. **Answer each independently** without referencing other answers
-3. **Check consistency** - do independent answers contradict each other?
-4. **Apply 5 Whys ONLY to contradictions** - targeted depth, not exhaustive
+#### 1.3 Scope Alignment Check (#81)
 
 ```
-## Socratic Decomposition for [Concern ID]
+## 1.3 Scope Alignment Check
 
-### Atomic Sub-Questions
-1. [sub-question 1]
-2. [sub-question 2]
-3. [sub-question 3]
+Original task (verbatim): "[task]"
 
-### Independent Answers
-1. [answer 1]
-2. [answer 2]
-3. [answer 3]
+### Element Coverage
+| Task Element | Addressed? | Evidence |
+|--------------|------------|----------|
+| [element 1] | FULL/PARTIAL/OMITTED | "[quote]" |
+| [element 2] | FULL/PARTIAL/OMITTED | "[quote]" |
 
-### Consistency Check
-- Q1 vs Q2: [consistent/contradicts]
-- Q1 vs Q3: [consistent/contradicts]
-- Q2 vs Q3: [consistent/contradicts]
+### Scope Drift Detection
+| Omission | Silent/Explicit | CUI BONO |
+|----------|-----------------|----------|
+| [omission] | [type] | AGENT/OUTCOME |
 
-### Targeted 5 Whys (only for contradictions)
-[Apply 5 Whys only where answers contradict]
+Scope verdict: [ALIGNED / DRIFTED with details]
 ```
 
-### Process per Concern × Method:
+#### 1.4 Known Pattern Detection
 
-**Step 1: Surface Check**
-- What violation does this method look for?
-- Where in CONTENT could it manifest?
-- Search for violation with evidence.
-
-**Step 2: Structure Check**
-- Is the problem caused by how CONTENT is organized?
-- Would different structure prevent this problem?
-
-**Step 3: Assumption Check**
-- What assumption allows this problem to exist?
-- Is the assumption valid?
-
-**Step 4: 5 Whys to Root Cause (if contradiction found)**
-```
-Problem: [what was found]
-WHY 1: Why does this exist? → [answer]
-WHY 2: Why [answer 1]? → [answer]
-WHY 3: Why [answer 2]? → [answer]
-WHY 4: Why [answer 3]? → [answer]
-WHY 5: Why [answer 4]? → [ROOT CAUSE]
-```
-
-### #151 Semantic Entropy Validation (NEW in v6.3)
-
-**For each finding, before confirming:**
-
-1. **Generate 3 paraphrases** of the finding claim
-2. **Cluster by meaning** - do paraphrases mean the same thing?
-3. **High variance = potential confabulation**
-4. **If high variance** → require evidence or acknowledge uncertainty
+Apply pattern matchers for known error types:
 
 ```
-## Semantic Entropy Check for Finding [N]
+## 1.4 Known Pattern Detection
 
-### Original Claim
-"[finding claim]"
+### Pattern Library Scan
+| Pattern ID | Pattern Name | Match? | Evidence |
+|------------|--------------|--------|----------|
+| P001 | Definitional contradiction | YES/NO | [quote if YES] |
+| P002 | Circular dependency | YES/NO | [quote if YES] |
+| P003 | Missing error handling | YES/NO | [quote if YES] |
+| P004 | Unvalidated assumption | YES/NO | [quote if YES] |
+| P005 | Inconsistent terminology | YES/NO | [quote if YES] |
+| P006 | Scope creep | YES/NO | [quote if YES] |
+| P007 | Theoretical impossibility | YES/NO | [quote if YES] |
+| P008 | Domain term misuse | YES/NO | [quote if YES] |
 
-### Paraphrases
-1. "[paraphrase 1]"
-2. "[paraphrase 2]"
-3. "[paraphrase 3]"
-
-### Clustering
-- P1 ≈ P2: [same/different meaning]
-- P1 ≈ P3: [same/different meaning]
-- P2 ≈ P3: [same/different meaning]
-
-### Entropy Assessment
-- Variance: [LOW/MEDIUM/HIGH]
-- If HIGH: [evidence required OR uncertainty acknowledged]
+Patterns matched: [N]
 ```
 
-### Finding Format
+### Phase 2: Layer 1 Findings & Decision
 
 ```
-### [N] 🔴|🟠|🟡 [DEPTH] Title
+## Phase 2: Layer 1 Summary
 
-Depth: SYMPTOM | CAUSE | STRUCTURE | ASSUMPTION | ROOT_CAUSE
-Type: Problem (P) | Gap (G)
-Entropy: LOW | MEDIUM | HIGH (from #151)
-
-Surface: [what is visible]
-Structure: [how organization contributes]
-Assumption: [what's assumed that allows this]
-Root Cause: [fundamental reason from 5 Whys]
-
-Evidence: "[quote]" - [location]
-Impact: [consequence]
-Fix: [action - specify if fixes symptom vs root cause]
-```
-
-### Anti-patterns (redo if detected)
-
-- "Looks fine" without specifics
-- Stopping at symptom without 5 Whys
-- "Intentional" without proof of intention AND benefit
-- Accepting redundancy without questioning necessity
-- Analyzing only content, ignoring structure/assumptions
-- Missing implicit security/operational requirements
-- **NEW:** High semantic entropy without evidence or uncertainty acknowledgment
-
----
-
-## Phase 4.5: Bayesian Stop Check
-
-**Purpose:** Evaluate whether to continue verification or stop early based on probability of remaining errors.
-
-*(Inherited from v6.2 - no changes)*
-
-### Safety Constraints (NEVER stop if ANY are true)
-
-| Constraint | Rationale |
-|------------|-----------|
-| Phase < 4 | Haven't completed discovery |
-| Categories hit < 3 | Insufficient breadth |
-| Tokens used < 2000 | Minimum effort required |
-| SECURE not checked | Layer D must complete for security-relevant artifacts |
-| Critical finding unresolved | Can't stop with unaddressed critical issues |
-| **Integration check failed** | **NEW: Must pass Phase 1.5** |
-
-### Calculation
-
-```
-Prior: λ = 6.5 (expected errors per task from ground-truth analysis)
-
-Detection Rate by Category:
-| Category | DR |
-|----------|-----|
-| CONFLICT | 90% |
-| SHALLOW | 80% |
-| ASSUME | 85% |
-| INTEGRATE | 35% → 55% (improved with #127) |
-| SKIP | 90% |
-| EDGE | 75% |
-| SECURE | 95% |
-| DEPEND | 55% |
-| PERF | 80% |
-| SCOPE | 55% |
-```
-
-**Note:** INTEGRATE detection rate improved from 35% to 55% due to Phase 1.5 and #127.
-
----
-
-## Phase 5: Challenge
-
-**Purpose:** Every finding must survive attack. Unvalidated findings may be false.
-
-**[MAB: Try to DISPROVE findings, not confirm them]**
-
-### For each finding, execute:
-
-#### #63 Challenge from Critical Perspective
-"Assume this finding is WRONG. Build strongest argument against it."
-
-#### #133 Abilene Paradox Check
-"Does this problem ACTUALLY exist? Or am I finding problems where none exist?"
-
-#### #109 Contraposition Inversion
-"What would GUARANTEE this finding is correct?"
-
-#### #26 Red Team vs Blue Team (REQUIRED for Layer D findings)
-**If any finding originates from Layer D (Security/Operational):**
-- Blue Team: Build defense
-- Red Team: Attack the defense
-- Document: Did Red Team breach Blue Team's defense?
-
-### NEW Challenge Methods in v6.3
-
-#### #127 Bootstrap Paradox
-"Does A require B require C require A?"
-
-For findings involving dependencies or integration:
-- Trace the dependency chain
-- Look for circular requirements
-- If cycle found → finding is CONFIRMED with higher confidence
-
-#### #128 Theseus Paradox
-"Does CORE of solution address CORE of problem?"
-
-For each finding:
-- What is the CORE of the finding?
-- What is the CORE of the problem it identifies?
-- Are they aligned?
-- If finding addresses peripheral issue while core problem remains → REVISE finding
-
-#### #116 Strange Loop Detection
-"Build justification graph and detect cycles."
-
-For the finding's reasoning:
-- Map claims → evidence → conclusions
-- Look for circular justifications
-- Each cycle needs EXTERNAL anchor
-- Ungrounded cycles → finding needs revision
-
-#### #119 Ground Truth Demand
-"Classify all claims as verifiable."
-
-For each claim in the finding:
-- Self-verifiable (can check from CONTENT)
-- Externally-verifiable (requires outside check)
-- Unverifiable (unfalsifiable)
-- High unverifiable % → finding is weak
-
-```
-## Challenge Results
-
-| Finding | #63 Critical | #133 Abilene | #109 Contra | #26 RedTeam | #127 Bootstrap | #128 Theseus | #116 Loops | #119 Ground | Status |
-|---------|--------------|--------------|-------------|-------------|----------------|--------------|------------|-------------|--------|
-| 1 | Survives | Exists | Met | N/A | No cycles | Aligned | Grounded | 80% verif | CONFIRMED |
-
-### Detailed Challenge Log
-
-#### Finding [N]: [title]
-
-**#127 Bootstrap Paradox:**
-- Dependency chain: [A → B → C → ?]
-- Cycles: [NONE / FOUND: describe]
-
-**#128 Theseus Paradox:**
-- Core of finding: [what]
-- Core of problem: [what]
-- Alignment: [YES/NO]
-
-**#116 Strange Loop Detection:**
-- Claim → Evidence map: [diagram]
-- Cycles found: [list]
-- External anchors: [list]
-
-**#119 Ground Truth Demand:**
-- Self-verifiable: [N]%
-- Externally-verifiable: [N]%
-- Unverifiable: [N]%
-```
-
-→ Only CONFIRMED findings proceed to Results
-
-**HALT** (G only) - waiting for review
-
----
-
-## Phase 6: Results
-
-**Purpose:** Summary of confirmed findings with depth levels and actions.
-
-```
-## Verification Results
-
-TASK: [summary]
-CONTENT: [summary]
-Phases completed: 0-6
-Integration check: PASSED / FAILED (Phase 1.5)
-
-### Findings by Depth
-
-| ID | Concern | Sev | Depth | Entropy | Finding | Root Cause |
-|----|---------|-----|-------|---------|---------|------------|
-| 1 | A1 | 🔴 | ROOT | LOW | [what] | [why] |
-| 2 | B1 | 🟠 | STRUCTURE | MEDIUM | [what] | [why] |
-| 3 | D1 | 🟠 | ASSUMPTION | LOW | [what] | [why] |
-
-Depth legend: SYMPTOM → CAUSE → STRUCTURE → ASSUMPTION → ROOT_CAUSE
-
-Status: 🔴 N / 🟠 N / 🟡 N
+### Findings from Innate Detection
+| ID | Check | Severity | Description | Confidence |
+|----|-------|----------|-------------|------------|
+| L1-1 | [check] | [sev] | [finding] | [0-100%] |
+| L1-2 | [check] | [sev] | [finding] | [0-100%] |
 
 ### Token Usage
+Layer 1 tokens used: [N]
+Budget remaining: [N]
+
+### Decision Gate
+
+**FAST PATH CONDITIONS:**
+
+Condition A - CRITICAL FINDING:
+- [ ] Any finding with severity = CRITICAL
+- If YES → Jump to Layer 4 (Escalation)
+
+Condition B - SIMPLE COMPLETION:
+- [ ] Tier = 1 AND
+- [ ] No CRITICAL or IMPORTANT findings AND
+- [ ] Complexity = LOW
+- If ALL YES → Skip Layer 2, proceed to Layer 3 (Memory)
+
+Condition C - CONTINUE TO ADAPTIVE:
+- [ ] Tier >= 2 OR
+- [ ] IMPORTANT findings present OR
+- [ ] Complexity >= MEDIUM
+- If ANY YES → Continue to Layer 2
+
+**DECISION: [ESCALATE / COMPLETE / CONTINUE]**
+```
+
+**If COMPLETE:** → Skip to Layer 3 (Memory) → Output findings
+**If ESCALATE:** → Jump to Layer 4 (Escalation)
+**If CONTINUE:** → Proceed to Layer 2
+
+---
+
+## LAYER 2: ADAPTIVE DETECTION (Phase 3-5)
+
+**Purpose:** Deep, artifact-specific analysis with anomaly detection.
+**Budget:** ~15-30K tokens
+**Executes:** Tier 2+ only
+
+### Phase 3: Dynamic Method Selection
+
+**KEY INNOVATION:** Methods selected FOR THIS ARTIFACT, not from predefined list.
+
+#### 3.1 Relevance Scoring
+
+For each method in library, calculate artifact-specific relevance:
+
+```
+## 3.1 Method Relevance Scoring
+
+### Scoring Formula
+For method M and artifact A:
+
+RELEVANCE(M, A) =
+  domain_match(M, A.domains) × 0.25 +
+  complexity_match(M, A.complexity) × 0.20 +
+  pattern_match(M, L1_findings) × 0.25 +
+  category_coverage(M, selected) × 0.15 +
+  historical_effectiveness(M) × 0.15
+
+### Candidate Methods (Top 2×BUDGET)
+| Rank | Method | Category | Relevance | Selection Reasoning |
+|------|--------|----------|-----------|---------------------|
+| 1 | #[N] [name] | [cat] | [0.XX] | [why relevant to THIS artifact] |
+| 2 | #[N] [name] | [cat] | [0.XX] | [why relevant to THIS artifact] |
+| ... | ... | ... | ... | ... |
+
+### Category Distribution Check
+| Category | Count | Min Required |
+|----------|-------|--------------|
+| core | [N] | 2 |
+| risk | [N] | 1 |
+| sanity | [N] | 1 |
+| [domain-specific] | [N] | 1 if domain present |
+
+Distribution: [BALANCED / NEEDS ADJUSTMENT]
+```
+
+#### 3.2 Reasoning Gate
+
+Each selected method must pass reasoning check:
+
+```
+## 3.2 Reasoning Gate
+
+| Method | Why for THIS artifact | Circular? | Pass |
+|--------|----------------------|-----------|------|
+| #[N] | [specific reason referencing artifact content] | NO | YES |
+| #[N] | "checks contradictions" | YES - generic | NO |
+
+### Final Selection
+Methods passing gate: [N]
+Budget allows: [N]
+Selected: [list with IDs]
+```
+
+### Phase 4: Adaptive Analysis
+
+#### 4.1 Method Application
+
+Apply selected methods with depth tracking:
+
+```
+## 4.1 Method Application
+
+### Method: #[N] [Name]
+**Applied to:** [specific artifact section/concern]
+
+**Process:**
+1. Surface observation: [what method reveals]
+2. Deeper analysis: [following method's pattern]
+3. Root cause (if finding): [5 Whys if applicable]
+
+**Result:**
+- Finding: [YES/NO]
+- If YES: [description]
+- Depth achieved: [SYMPTOM/CAUSE/STRUCTURE/ASSUMPTION/ROOT_CAUSE]
+- Confidence: [0-100%]
+- Evidence: "[quote]" at [location]
+
+[Repeat for each method]
+```
+
+#### 4.2 Anomaly Detection (NEW in V7)
+
+**Purpose:** Flag patterns that DON'T match known categories.
+
+```
+## 4.2 Anomaly Detection
+
+### Anomaly Scan
+Look for elements that:
+- Don't fit any known pattern category
+- Have unusual structural properties
+- Use unexpected combinations
+- Seem "off" without clear classification
+
+| Element | Location | Anomaly Type | Confidence | Investigation Needed |
+|---------|----------|--------------|------------|---------------------|
+| [element] | [where] | UNCLASSIFIED/UNUSUAL/UNEXPECTED | [0-100%] | [what to check] |
+
+### Anomaly Classification
+| Anomaly | After Investigation | Verdict |
+|---------|---------------------|---------|
+| [A1] | [investigation result] | FALSE_POSITIVE / NEW_PATTERN / UNKNOWN |
+
+**NEW_PATTERN findings:** Add to Layer 3 for learning
+**UNKNOWN findings:** Escalate to Layer 4 if confidence < 70%
+```
+
+#### 4.3 Hypothesis Generation (NEW in V7)
+
+**Purpose:** Generate detection hypotheses from first principles when patterns don't apply.
+
+```
+## 4.3 Hypothesis Generation
+
+For each UNKNOWN anomaly or uncovered area:
+
+### First Principles Check
+**Question:** If this artifact were WRONG, what would be symptoms?
+
+| Hypothesis | Symptoms to Check | Evidence Found | Status |
+|------------|-------------------|----------------|--------|
+| H1: [hypothesis] | [symptom list] | [evidence or none] | CONFIRMED/REFUTED/UNCERTAIN |
+| H2: [hypothesis] | [symptom list] | [evidence or none] | CONFIRMED/REFUTED/UNCERTAIN |
+
+### Inversion Check (#80)
+**Question:** What would GUARANTEE this artifact fails?
+
+| Failure Path | Artifact Does This? | Finding? |
+|--------------|---------------------|----------|
+| [failure 1] | YES/NO/PARTIAL | [finding if YES] |
+| [failure 2] | YES/NO/PARTIAL | [finding if YES] |
+```
+
+### Phase 5: Confidence Assessment & Challenge
+
+#### 5.1 Finding Consolidation
+
+```
+## 5.1 Finding Consolidation
+
+### All Findings (Layer 1 + Layer 2)
+| ID | Source | Type | Severity | Description | Confidence | Root Cause |
+|----|--------|------|----------|-------------|------------|------------|
+| F1 | L1-Consistency | CONFLICT | 🔴 | [desc] | 95% | [root cause] |
+| F2 | L2-Method #108 | THEORY | 🔴 | [desc] | 90% | [root cause] |
+| F3 | L2-Anomaly | UNKNOWN | 🟠 | [desc] | 65% | [needs investigation] |
+
+### Confidence Distribution
+| Confidence Band | Count | Action |
+|-----------------|-------|--------|
+| 90-100% | [N] | Report as confirmed |
+| 70-89% | [N] | Report with caveat |
+| 50-69% | [N] | Flag for review |
+| <50% | [N] | Consider dropping or escalating |
+```
+
+#### 5.2 Challenge Protocol
+
+```
+## 5.2 Challenge Protocol
+
+For each finding with confidence >= 50%:
+
+### Finding [F1]
+**#63 Critical Challenge:** Strongest argument AGAINST this finding:
+[argument]
+
+**#133 Abilene Check:** Does this problem ACTUALLY exist?
+[assessment]
+
+**#109 Contraposition:** What would GUARANTEE this finding correct?
+[condition] → Met? [YES/NO]
+
+**Verdict:** [CONFIRMED / DOWNGRADED / DROPPED]
+**Final Confidence:** [adjusted %]
+
+[Repeat for each finding]
+```
+
+---
+
+## LAYER 3: IMMUNE MEMORY (Phase 6)
+
+**Purpose:** Learn from this verification to improve future runs.
+**Budget:** ~1K tokens (overhead)
+**Always executes:** YES
+
+### Phase 6: Learning Extraction
+
+#### 6.1 Results Recording
+
+```
+## 6.1 Results Recording
+
+### Verification Metrics
 | Metric | Value |
 |--------|-------|
-| Input Tokens | [N] |
-| Output Tokens | [N] |
-| Total Tokens | [N] |
-| Execution Time | [N] sek |
+| Artifact type | [type] |
+| Artifact size | [N] tokens |
+| Tier executed | [N] |
+| Budget allocated | [N]K |
+| Budget used | [N]K |
+| Layers executed | [list] |
 
----
-
-### Actions (per finding)
-[F] Fix [ID] - fix ROOT CAUSE (recommended)
-[E] Explain [ID] - explain problem and fix in detail before deciding
-[P] Patch [ID] - fix SYMPTOM only (with warning)
-[D] Deeper [ID] - investigate further
-[R] Reject [ID] - mark as invalid
-
----
-
-### Navigation
-[C] Concerns - modify concerns
-[M] Methods - re-run with different methods
-[K] Kernel - proceed to user handoff (Phase 6.5)
-[X] Done - finish verification
-
----
-
-### Session
-[O] Restart - start over from Phase 0
+### Detection Metrics
+| Metric | Value |
+|--------|-------|
+| Findings total | [N] |
+| CRITICAL findings | [N] |
+| IMPORTANT findings | [N] |
+| MINOR findings | [N] |
+| Anomalies detected | [N] |
+| Anomalies → real findings | [N] |
+| Anomalies → false positives | [N] |
+| Hypotheses generated | [N] |
+| Hypotheses confirmed | [N] |
 ```
 
-**HALT** - waiting for choice
-
----
-
-## Phase 6.5: Kernel Paradox Handoff (NEW in v6.3)
-
-**Purpose:** Explicitly identify what the AGENT cannot objectively evaluate and what the USER must independently verify.
-
-### #136 Kernel Paradox
-"Agent cannot objectively evaluate own work - what must USER independently verify?"
+#### 6.2 Method Effectiveness
 
 ```
-## Kernel Paradox Handoff
+## 6.2 Method Effectiveness
 
-### What Agent CANNOT Objectively Verify
+### Method Performance This Run
+| Method | Relevance Score | Findings | Confirmed | ROI |
+|--------|-----------------|----------|-----------|-----|
+| #[N] | [score] | [N] | [N] | [findings/cost] |
+| #[N] | [score] | [N] | [N] | [findings/cost] |
 
-| Item | Why Agent Cannot Verify | User Action Required |
-|------|-------------------------|---------------------|
-| [item 1] | [self-reference issue] | [what user should check] |
-| [item 2] | [competence boundary] | [what user should check] |
-| [item 3] | [domain expertise gap] | [what user should check] |
+### Weight Updates
+For each method used:
+new_weight = old_weight × 0.9 + session_performance × 0.1
 
-### Self-Evaluation Limits
+| Method | Old Weight | Performance | New Weight |
+|--------|------------|-------------|------------|
+| #[N] | [old] | [0-1] | [new] |
 
-1. **Knowledge gaps identified:** [list]
-2. **Skill gaps identified:** [list]
-3. **Where I guessed vs knew:** [list]
-
-### Recommended User Verification
-
-**HIGH PRIORITY (must verify):**
-- [ ] [item] - [why critical]
-- [ ] [item] - [why critical]
-
-**MEDIUM PRIORITY (should verify):**
-- [ ] [item] - [reason]
-
-**LOW PRIORITY (nice to verify):**
-- [ ] [item] - [reason]
-
-### Handoff Statement
-
-"This verification identified [N] findings. However, the following aspects could not be objectively evaluated by this agent and require user verification: [list]. Specifically, [most critical item] should be reviewed because [reason]."
+### New Pattern Learning
+| Pattern | Source | Description | Suggested Pattern ID |
+|---------|--------|-------------|---------------------|
+| [new pattern] | Anomaly A1 | [what to match] | P00[N] |
 ```
 
-**HALT** - user must acknowledge handoff before proceeding to fixes
-
----
-
-## Phase 7: Fix Root Cause
-
-*(Inherited from v6.2 - no changes)*
-
-**Purpose:** Fix the ROOT CAUSE, not just the symptom.
-
-**[MAB: Fix must address root cause. Patching symptoms is temporary.]**
-
-**Iteration Limit:** Maximum 3 fix attempts per finding.
-
----
-
-## Severity Levels
-
-| Level | Symbol | Meaning | Action |
-|-------|--------|---------|--------|
-| CRITICAL | 🔴 | Blocks usage or causes harm | Must fix root cause |
-| IMPORTANT | 🟠 | Significant issue | Should fix root cause |
-| MINOR | 🟡 | Small issue | Can defer or patch |
-
-### Security Escalation Criteria (Layer D → 🔴)
-
-*(Inherited from v6.2)*
-
----
-
-## Minimum Method Requirements
-
-| Phase | Minimum Methods | Categories Required |
-|-------|-----------------|---------------------|
-| Phase 0 | 4 (#113, #131, #112, **#132**) | epistemology, meta |
-| Phase 1.5 | 1 (#127) | challenge |
-| Phase 2 | 16-20 (4-5 per layer × 4 layers) | sanity, coherence, exploration, risk, **epistemology** |
-| Phase 3 | 5 per concern | Must include 3+ categories + 2 attack methods |
-| Phase 4 | +2 (#151, #152) | epistemology, core |
-| Phase 5 | 8 (#63, #133, #109, #26, **#127, #128, #116, #119**) | challenge, meta, exploration, epistemology |
-| Phase 6.5 | 1 (#136) | meta |
-| Phase 7 | 3+ | Appropriate for fix type |
-
-**Total minimum: ~42-55 methods per verification**
-
----
-
-## Quick Reference
+#### 6.3 Adaptation Feedback
 
 ```
-Phase 0: Am I being honest? (#113, #131, #112, #132)
-Phase 1: What am I verifying? (TASK, CONTENT, MODE)
-Phase 1.5: Did I read existing code? (#127 Bootstrap) ← NEW
-Phase 2: What could be wrong? (Content, Structure, Assumptions, Security)
-Phase 3: How will I check? (Methods with diversity)
-Phase 4: What IS wrong? (#152 Socratic → 5 Whys → #151 Entropy)
-Phase 4.5: Should I stop early? (Bayesian check)
-Phase 5: Is it really wrong? (#63, #133, #109, #26, #127, #128, #116, #119)
-Phase 6: What will I do? (Fix Root Cause, not symptom)
-Phase 6.5: What can't I verify? (#136 Kernel Paradox) ← NEW
-Phase 7: Did I fix the real problem? (Verify root cause addressed)
+## 6.3 Adaptation Feedback
+
+### What Worked
+| Element | Evidence | Keep/Amplify |
+|---------|----------|--------------|
+| [selection strategy] | [result] | [recommendation] |
+| [method X] | [findings] | [recommendation] |
+
+### What Didn't Work
+| Element | Evidence | Change/Remove |
+|---------|----------|---------------|
+| [selection strategy] | [result] | [recommendation] |
+| [method Y] | [no findings, high cost] | [recommendation] |
+
+### Process Improvement Suggestions
+| Suggestion | Basis | Priority |
+|------------|-------|----------|
+| [suggestion] | [evidence] | HIGH/MEDIUM/LOW |
 ```
 
 ---
 
-## Changelog from v6.2
+## LAYER 4: ESCALATION (Phase 7)
 
-| Change | Rationale | Expected Impact |
-|--------|-----------|-----------------|
-| Added Phase 1.5 Integration Check | Address INTEGRATE weakness (T11-E1) | +20% INTEGRATE DR |
-| Added #127 Bootstrap Paradox | Detect circular dependencies | Catch T11-E1 type errors |
-| Added #128 Theseus Paradox | Ensure core problem addressed | Fewer peripheral findings |
-| Added #116 Strange Loop Detection | Catch circular reasoning | Reduce false positives |
-| Added #119 Ground Truth Demand | Classify claim verifiability | Better evidence quality |
-| Added #132 Goodhart's Law Check | Prevent metric gaming | More honest verification |
-| Added #136 Kernel Paradox | Explicit handoff to user | Clearer verification limits |
-| Added #151 Semantic Entropy | Detect confabulation | Reduce false positives |
-| Added #152 Socratic Decomposition | Targeted 5 Whys | More efficient root cause |
-| Added Phase 6.5 Kernel Handoff | User verification requirements | Better human-agent collaboration |
+**Purpose:** Human review for critical findings and low-confidence items.
+**Budget:** Variable
+**Executes:** When triggered
 
-### Expected Performance vs v6.2
+### Phase 7: Escalation Protocol
 
-| Metric | v6.2 | v6.3 Expected | Improvement |
-|--------|------|---------------|-------------|
-| INTEGRATE DR | 35% | 55% | +20% |
-| Overall DR | 42.9% | 55-60% | +12-17% |
-| False Positive Rate | ~65% | ~45% | -20% |
-| Tokens | ~15.7K | ~18K | +15% (more thorough) |
+#### 7.1 Escalation Triggers
+
+```
+## 7.1 Escalation Check
+
+### Automatic Triggers
+| Trigger | Condition | Met? |
+|---------|-----------|------|
+| CRITICAL finding | Any finding severity = CRITICAL | YES/NO |
+| Low confidence | Any finding confidence < 70% | YES/NO |
+| Unresolved anomaly | Anomaly verdict = UNKNOWN | YES/NO |
+| Theoretical impossibility | Theory check flagged violation | YES/NO |
+| Definitional conflict | Conflict with no construction proof | YES/NO |
+
+### Escalation Decision
+Triggers met: [N]
+**ESCALATE: [YES/NO]**
+```
+
+#### 7.2 Escalation Package (if triggered)
+
+```
+## 7.2 Escalation Package
+
+### Items Requiring Human Review
+
+#### CRITICAL Findings
+| ID | Finding | Confidence | Why Escalated |
+|----|---------|------------|---------------|
+| [F1] | [description] | [%] | [reason] |
+
+#### Low Confidence Items
+| ID | Finding | Confidence | What Would Increase Confidence |
+|----|---------|------------|--------------------------------|
+| [F2] | [description] | [%] | [evidence needed] |
+
+#### Unresolved Anomalies
+| ID | Anomaly | Investigation Done | What User Should Check |
+|----|---------|-------------------|------------------------|
+| [A1] | [description] | [what agent tried] | [specific check for user] |
+
+### Recommended Actions
+For each escalated item:
+| Item | Recommended Action | If Confirmed | If Refuted |
+|------|-------------------|--------------|------------|
+| [F1] | [action] | [consequence] | [consequence] |
+
+### User Decision Required
+For each item, user must provide:
+- [ ] CONFIRM - Finding is valid
+- [ ] REFUTE - Finding is not valid, reason: ___
+- [ ] DEFER - Cannot determine, will live with risk
+```
+
+**HALT** - waiting for user decisions on escalated items
+
+#### 7.3 Post-Escalation Update
+
+After user decisions:
+
+```
+## 7.3 Post-Escalation Update
+
+### User Decisions
+| Item | User Decision | Rationale |
+|------|---------------|-----------|
+| [F1] | CONFIRM/REFUTE/DEFER | [user's reason] |
+
+### Finding Updates
+| Item | Original Status | Updated Status |
+|------|-----------------|----------------|
+| [F1] | ESCALATED | CONFIRMED/DROPPED/DEFERRED |
+
+### Learning from Escalation
+| Item | Agent Assessment | User Decision | Agent Was |
+|------|------------------|---------------|-----------|
+| [F1] | [assessment] | [decision] | CORRECT/WRONG |
+
+→ Update weights based on escalation accuracy
+```
 
 ---
 
-## Method Reference (NEW in v6.3)
+## OUTPUT: Verification Report
 
-| # | Name | Category | Usage |
-|---|------|----------|-------|
-| #127 | Bootstrap Paradox | challenge | Phase 1.5, Phase 5 - circular deps |
-| #128 | Theseus Paradox | challenge | Phase 5 - core alignment |
-| #116 | Strange Loop Detection | epistemology | Phase 2B, Phase 5 - reasoning cycles |
-| #119 | Ground Truth Demand | epistemology | Phase 2C, Phase 5 - claim verification |
-| #132 | Goodhart's Law Check | meta | Phase 0 - metric vs goal |
-| #136 | Kernel Paradox | meta | Phase 6.5 - self-evaluation limits |
-| #151 | Semantic Entropy Validation | epistemology | Phase 4 - confabulation detection |
-| #152 | Socratic Decomposition | core | Phase 4 - targeted 5 Whys |
+```
+## Deep Verify V7.0 - Verification Report
+
+### Artifact Summary
+| Property | Value |
+|----------|-------|
+| Type | [type] |
+| Domains | [domains] |
+| Complexity | [LOW/MEDIUM/HIGH] |
+| Criticality | [LOW/MEDIUM/HIGH/CRITICAL] |
+| Tier Executed | [1-5] |
+
+### Execution Summary
+| Metric | Value |
+|--------|-------|
+| Budget | [N]K allocated / [N]K used |
+| Layers | [list] |
+| Methods applied | [N] |
+| Anomalies detected | [N] |
+| Hypotheses tested | [N] |
+| Escalations | [N] |
+
+### Findings
+
+#### CRITICAL (Must Fix)
+| ID | Type | Description | Confidence | Root Cause |
+|----|------|-------------|------------|------------|
+| [F1] | [type] | [desc] | [%] | [root cause] |
+
+#### IMPORTANT (Should Fix)
+| ID | Type | Description | Confidence | Root Cause |
+|----|------|-------------|------------|------------|
+| [F2] | [type] | [desc] | [%] | [root cause] |
+
+#### MINOR (Consider Fixing)
+| ID | Type | Description | Confidence | Root Cause |
+|----|------|-------------|------------|------------|
+| [F3] | [type] | [desc] | [%] | [root cause] |
+
+#### DEFERRED (User Accepted Risk)
+| ID | Type | Description | User Rationale |
+|----|------|-------------|----------------|
+| [F4] | [type] | [desc] | [rationale] |
+
+### Uncertainty Report (NEW in V7)
+| Area | Confidence | What Agent Couldn't Verify |
+|------|------------|---------------------------|
+| [area] | [%] | [limitation] |
+
+### Recommendations
+| Priority | Action | Addresses |
+|----------|--------|-----------|
+| 1 | [action] | [finding IDs] |
+| 2 | [action] | [finding IDs] |
+
+### Process Metrics (for tracking)
+| Metric | This Run | Running Average |
+|--------|----------|-----------------|
+| Tokens per finding | [N] | [N] |
+| True positive rate | [%] | [%] |
+| False positive rate | [%] | [%] |
+| Anomaly precision | [%] | [%] |
+```
+
+---
+
+## Appendix A: Tier Reference
+
+| Tier | Budget | Layers | When Used |
+|------|--------|--------|-----------|
+| 1 | 10K | 1 only | Simple, low-criticality artifacts |
+| 2 | 20K | 1 + partial 2 | Low complexity OR low criticality |
+| 3 | 40K | 1 + 2 | Medium complexity AND medium+ criticality |
+| 4 | 60K | 1 + 2 + 4 if needed | High complexity OR high criticality |
+| 5 | 100K+ | All | Critical artifacts, comprehensive review |
+
+---
+
+## Appendix B: Anomaly Types
+
+| Type | Description | Detection |
+|------|-------------|-----------|
+| UNCLASSIFIED | Element doesn't match any known pattern | Pattern library miss |
+| UNUSUAL | Structure or content deviates from norm | Statistical outlier |
+| UNEXPECTED | Element present where not expected | Context mismatch |
+| INTERACTION | Two elements conflict in non-obvious way | Cross-reference check |
+| DOMAIN_MISMATCH | Element from wrong domain context | Domain classifier |
+
+---
+
+## Appendix C: Confidence Calibration
+
+| Confidence | Meaning | Action |
+|------------|---------|--------|
+| 95-100% | Near certain | Report as confirmed |
+| 80-94% | High confidence | Report with standard weight |
+| 65-79% | Moderate confidence | Report with caveat |
+| 50-64% | Low confidence | Flag for user verification |
+| <50% | Speculation | Do not report as finding |
+
+---
+
+## Appendix D: Method Selection Flowchart
+
+```
+START
+  │
+  ▼
+Is artifact domain-specific? ──YES──→ Include domain methods (top 3 by relevance)
+  │ NO                                         │
+  ▼                                            ▼
+Include core methods (consistency, completeness, scope)
+  │
+  ▼
+Layer 1 findings present? ──YES──→ Include methods targeting finding types
+  │ NO                                         │
+  ▼                                            ▼
+Include risk methods (pre-mortem, failure mode)
+  │
+  ▼
+Budget remaining? ──YES──→ Add next highest relevance method
+  │ NO                     │
+  ▼                        │
+Check category coverage    │
+  │                        │
+  ▼                        │
+Missing categories? ──YES──┘
+  │ NO
+  ▼
+SELECTION COMPLETE
+```
+
+---
+
+## Appendix E: Learning Weight Formula
+
+```
+Method effectiveness score:
+
+score(M) =
+  (findings_confirmed / findings_claimed) × 0.4 +
+  (1 - false_positive_rate) × 0.3 +
+  (findings / tokens_used) × 0.2 +
+  user_feedback_score × 0.1
+
+Weight update:
+new_weight(M) = old_weight(M) × 0.9 + score(M) × 0.1
+
+Method retirement threshold:
+If weight(M) < 0.3 for 10 consecutive runs → flag for removal review
+```
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 7.0 | 2026-01-13 | MAJOR: Adaptive Verification System architecture, 4-layer model, dynamic method selection, anomaly detection, learning loop, tiered execution |
+| 6.6 | 2026-01-12 | Phase 2.7 Conflict & Dependency Deep Analysis |
+| 6.5 | 2026-01-12 | Two-Pass Semantic Selection |
+| 6.4 | 2026-01-11 | Adaptive method selection |
+| 6.3 | 2026-01-10 | Stability protocols |
+
+---
+
+## Migration Notes from V6.x
+
+### What's Different
+
+| V6.x Approach | V7.0 Approach |
+|---------------|---------------|
+| Fixed method list | Dynamic per-artifact selection |
+| All methods always | Tiered execution by criticality |
+| Pattern matching only | Pattern + Anomaly + Hypothesis |
+| No learning | Weight updates from results |
+| Binary findings | Confidence levels |
+| No escalation path | Explicit human-in-loop |
+
+### Backward Compatibility
+
+V7 can emulate V6.x behavior by:
+- Setting Tier = 5 (all layers, no early termination)
+- Ignoring anomaly findings
+- Not updating weights
+
+However, this defeats the purpose of V7.
+
+### Recommended Migration
+
+1. Run V7 with default triage
+2. Compare findings to V6.x baseline
+3. Adjust triage thresholds if needed
+4. Allow learning loop to calibrate weights over 5-10 runs
